@@ -121,5 +121,13 @@ travailler sans lancer le tableau.
 Ces extensions accompagnent [Ensemble](https://www.app-ensemble.fr), l'outil de
 plans de travail et de ceintures de compétences.
 
-Le nom et le logo Ensemble sont la propriété de vroad studio. Aucune licence
-n'est encore attachée au code : si vous souhaitez le réutiliser, ouvrez une issue.
+## Licence
+
+Le code est sous [licence MIT](LICENSE) : reprenez-le, modifiez-le, distribuez-le,
+y compris pour un usage commercial, à la seule condition de conserver la mention
+de copyright. Aucune garantie n'est donnée.
+
+La licence porte sur le code. **Le nom et le logo Ensemble restent la propriété
+de vroad studio** : reprendre la bande numérique pour en faire autre chose, oui ;
+se présenter comme Ensemble, non. Si vous publiez une version dérivée, remplacez
+le logo du bandeau par le vôtre.
