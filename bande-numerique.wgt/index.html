@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bande numérique Ensemble</title>
+<style>
+/* Extension Ensemble pour OpenBoard.
+   Palette prise dans le logo : le rose du disque, le bleu des flèches.
+   Aucune police distante : le widget doit fonctionner sans internet,
+   dans une salle de classe. */
+:root {
+  --rose: #f24150;
+  --rose-sombre: #c62a38;
+  --rose-pale: #fdebed;
+  --bleu: #1a4c6c;
+  --bleu-pale: #e8eff4;
+  --encre: #22303a;
+  --encre-douce: #5b6b78;
+  --trait: #d3dde4;
+  --fond: #ffffff;
+  --fond-2: #f6f9fb;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--fond);
+  color: var(--encre);
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 15px;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.app {
+  height: 100%;
+  min-height: 380px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--trait);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--fond);
+}
+
+/* ---------- bandeau ---------- */
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  background: var(--fond-2);
+  border-bottom: 1px solid var(--trait);
+}
+.brand {
+  display: flex; align-items: center; gap: 12px;
+  text-decoration: none; color: inherit; border-radius: 8px; padding: 2px 4px;
+}
+.brand:hover { background: var(--rose-pale); }
+.brand img { height: 40px; width: auto; display: block; }
+.brand-txt { font-size: 17px; font-weight: 600; color: var(--bleu); }
+
+.scale { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+.scale-label { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--encre-douce); }
+.seg { display: flex; border: 1px solid var(--trait); border-radius: 9px; overflow: hidden; background: #fff; }
+.seg button {
+  font: inherit; font-size: 15px; font-weight: 600; min-width: 56px; min-height: 40px;
+  border: 0; border-right: 1px solid var(--trait); background: #fff;
+  color: var(--encre-douce); cursor: pointer; padding: 0 12px;
+}
+.seg button:last-child { border-right: 0; }
+.seg button:hover { background: var(--bleu-pale); }
+.seg button[aria-pressed="true"] { background: var(--bleu); color: #fff; }
+.seg button:disabled { opacity: .3; cursor: default; background: #fff; }
+.origin-val {
+  display: flex; align-items: center; justify-content: center;
+  min-width: 68px; min-height: 40px; padding: 0 10px;
+  font-size: 16px; font-weight: 700; color: var(--bleu);
+  background: var(--bleu-pale); border-right: 1px solid var(--trait);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- la bande ---------- */
+.board {
+  flex: 1; min-height: 210px; padding: 10px 10px 14px; position: relative;
+  display: flex; align-items: center;   /* la bande au milieu, pas collée en haut */
+}
+.board svg { flex: 1; }
+svg.band { display: block; width: 100%; height: 240px; touch-action: none; cursor: crosshair; }
+.notice {
+  position: absolute; left: 50%; top: 8px; transform: translateX(-50%);
+  background: var(--bleu); color: #fff; font-size: 13px;
+  padding: 6px 14px; border-radius: 999px; pointer-events: none;
+}
+.band text { font-family: inherit; }
+.ax { stroke: var(--encre); stroke-width: 2.5; stroke-linecap: round; }
+.tk { stroke: var(--trait); stroke-width: 2; }
+.tk-maj { stroke: var(--encre-douce); stroke-width: 2.5; }
+.lb { font-size: 14px; fill: var(--encre-douce); text-anchor: middle; }
+.lb-dep { fill: var(--bleu); font-weight: 700; font-size: 17px; }
+.lb-arr { fill: var(--rose); font-weight: 700; font-size: 19px; }
+.fil { stroke: var(--rose); stroke-width: 2; stroke-dasharray: 3 4; }
+.jp { fill: none; stroke: var(--rose); stroke-width: 3; stroke-linecap: round; }
+.jp-lb { font-size: 15px; font-weight: 700; fill: var(--rose); text-anchor: middle; }
+.dep { fill: var(--bleu); }
+.arr { fill: var(--rose); }
+.arr-ring { fill: none; stroke: var(--rose); stroke-width: 2.5; }
+.hint-txt { font-size: 14px; fill: var(--encre-douce); text-anchor: middle; }
+
+/* ---------- commandes ---------- */
+.pad {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 12px 16px; border-top: 1px solid var(--trait); background: var(--fond-2);
+}
+.group { display: flex; gap: 8px; align-items: center; }
+.group-cap {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--encre-douce); margin-right: 2px;
+}
+.jump {
+  font: inherit; font-size: 19px; font-weight: 700; min-width: 76px; min-height: 54px;
+  border: 2px solid var(--rose); border-radius: 12px; background: #fff; color: var(--rose);
+  cursor: pointer; padding: 0 10px;
+}
+.jump:hover:not(:disabled) { background: var(--rose); color: #fff; }
+.jump:disabled { opacity: .3; cursor: default; }
+.jump.back { border-color: var(--bleu); color: var(--bleu); }
+.jump.back:hover:not(:disabled) { background: var(--bleu); color: #fff; }
+.tool {
+  font: inherit; font-size: 15px; min-height: 54px; padding: 0 16px;
+  border: 1px solid var(--trait); border-radius: 12px; background: #fff;
+  color: var(--encre); cursor: pointer;
+}
+.tool:hover:not(:disabled) { border-color: var(--encre-douce); }
+.tool:disabled { opacity: .35; cursor: default; }
+.tools { margin-left: auto; display: flex; gap: 8px; }
+button:focus-visible, .seg button:focus-visible { outline: 3px solid var(--rose); outline-offset: 2px; }
+
+@media (max-width: 620px) {
+  .jump { min-width: 60px; font-size: 17px; }
+  .tools { margin-left: 0; }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="bar">
+    <a class="brand" id="brand" href="https://www.app-ensemble.fr"
+       target="_blank" rel="noopener noreferrer" title="Ouvrir Ensemble">
+      <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGMAAABbCAYAAABnEjtVAAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAY6ADAAQAAAABAAAAWwAAAAAsWI1dAAASZ0lEQVR4Ae2dCZhU1ZWA3321NN1NVSuIYCTq5za44IaJgwJdTWRpml4gIctkZuIyMXEwGRPN5+hERkZnMphB48RBTb7RSYyZz49E6G72QSholiiBRE0QAxlRhBghSlc10EvVu/Of11Xd1dWveq1X3XxT9+vb975zzj333HPu/u59pYzTzOlQaERLrPhjraZ3nPLocYahxhmWcYVWKmgqvSceU9v9Ov5+4bb6d0+zohnqdBD4xLSqa2OmWW0YukopdW13mTUgipIIEvg4gO2GVnU+K/5S4db6t7unG16QYWuMU1Mqz2vzmA+j4ypUdoahUkTV+n1awhGljSPgjxiWNcEwzWla6wOQncQoH4P+rC6q1nqfNtTPjJZTj5fsXP9hF9wweUgp4fCQ6MTU+efEPPFFylC3I5Gvve3qD5VWz1vaWB9s9YXVzuWnUqWNllUvQtGLtTYWl4RXPiQ4ffOCkqZY6wwayyzxtKiP23Cto/B8PHiydal6ZW1EYMPFeYeLII2TZ41SBYUPxJV1D4awxVKWsUErYybKfCEYXnl3f2RVG5c3Qv+zhDeioXlXakPfg1FuAbYoUlRwV6SsZkmg2ff9dOOCHxJnDkmuaZmemFp5nSoY8RY2uAeURTfzX55W61ye69NIB/wYCK/4DQa9VcXV5bSbNZh7FMyWREe0/frktGq71QyYeZYSDrkxGsuqKuIec7v08fT561DWlaK04u11R7JUxi5sAltXvBncXFuh4lYp3dqvQV4aM409UiG6EA7Bw5AaI1Ja9S3GgnoMMQLF3F0Sri0XZeVCD4GtdVsZX5iZ6R9KRZAKESmtnpeLvDPlMWTGoEX8EzOgR1GEYjZ0B4p5IpOQbsJpJXcwK3tCKoRhqpcaS2v+ys38euI9JMZoKq35gjLMB0UwbRl/HdxS98OehOwNpy19PpwMurmrmsqqZ0Wnlo/pLU0qPiCTA63/VWDKNH4cCc2bkorPVTznxjhRVjPJMvVzdgEt44GSLSufH3RhlbpQFn2mqeZZhlqnvQUfREI1OyKlNfefDM0f3xf+wXDt/djzJ0KrDauur+n6wruvNDk1xsnpc8+NM0ijuALq8U+DW1Z+p6+C9kRnGtZBu2VYei/hdmixiTHZMI1/ian4gWio5tu6vLygJx6CCxjHb5X09Jxnkm69njmzuLc02cTn1Bgx7X1BBku6k18GdeOXslUQrcy37e0QpZYzBkwxdHws48DXJB/b8Mp4ONJc8FZv3Y8Kh2MBreaS7hDpLo+0Fi7Jlox94ZMzY8gUFoFK6QPeUx5zthS8LwIOhCYYrj/GOPAks7NPYJQylLuRdQXjirWZGRO1P7NT4ZXHTcucxeyuiRby1cZpcy/JTJ1dTE6MoQ06DK2+J6Jrpb8SfHnFn7JbjMzcMEoYo8yQiQK1XTNjepaV99LMKeiumF4rQy+GxqNM72M90WYTlxNjNIWq76SWXYzgr5Vsrl2TzQL0lZdMFDw6fhP0UhG+yTjyjz2lDRiNTzLDOsbYMxfaUE+02cK5bgx9U1XAMoyHRWBq5/3ZEnwgfIq31O9SMc3urtHEntdDkbIq2RF2dHSjzTQke4JBy/4+np7OXee6MZp86i9kdkIxXqN2rnW3OL1zDzTU7vUo/Rko2QRWz/e0JgnoyLJE67iyKVRT2jv3wVG4bgwKXG6LqPWTgxM1e6lHbq5dz6D+FLvDQe0pyDi9bm8d6seSMy2pvRzZE6MbJ1eNQdM2GbBnSK5eMz7krSK19MFY7EHWOrzP0LfJm8RUXGrctCzWRTitT29jNE2vDFH7iijJ3qJNqw6nFnKo42rb6o+o7otkbyxmKtm6d3TFxwq2IH8LdBMjocqubw8dUwwc6G7LsMxkbVo/cBHdSxk86nsK7q0MzZX6igV+p5zUb5e3sjba2I4za5xosgVz1xiGuloE1Zb6VbYEziafdkXr9TJ2RMfEZmbizbhny8+4cVUmmmzAXTUGZrCbNbOXP2RDWFd4aJ14m2jPsByzYMX6fjsi7ZCDI/XAgS4bw7CNoeOGK2/tBl7szpQeQ8vbPpzO/KYvWZl0e3na6bP/37WFjF6wwBM91ja4/SemY7LUYhoq42wPpe8ghL4nOgcW8G5Pk+DhQNIJ0q1sRPa6+9tJ37+Yey1j79HC/okyCGpRqOhyMK4P6cnGM5gsekvr3lGdEdEWOXuGozatdK02SQbR0spFltKL7dajdTPLmxnB8IptgsuGsw/U+Tzv0ILeywa/TDxcaxlq9+42upePyNivQzW2VTIJMWi4abZvHMnLJTncoKz1jWXVNwyab4JBq/Jwpld6zORAni3OXfm4Zox24Y0/ShhV1tiu2brwxFhBT8OhNV1nLzS12pgtgyivZRuDRWJiVuWC/LB01RjUJVt4FTfcN4boRykd0I2fpkWuwzYjUd7GbJyH4u26bQy2T1ydortqDIS3WwbtOzfGEHvwBjF41F9NdJMYJOb1bGqaVj1RbDVwJ1cPpOaexi2DSWZi5aomDVwR/U8pK+uAPi6veTchQ0nco8LsK03oP6f2FHR/tvyMRXZ5Bsqnt3Sutgwzrte2C6AyvsTpTcCB4mX72zaINrZhkFG8Qd3aGKqSt439cnrSJB/tbTaJ4oHmgv/pV+J+ErtqjJENda8zqh6lm7rsVKjmgn7KNmhy2yDR+CwG9VeQYQwDe0N/DRIdOV4M4WeN0e0qwqAFTGPgqjESedVJ2Kas+Wl55+RR7a4/GdD+m+lq9jDAjxOD9KtitF/WwZZGopW7J7Z7i76EzAyia1HE7RzLWEj4OIXSclrP0rHL4oY5gVKOpkbEeE9+kJ7ggBmP/T7QsPZoNouswsubuDwzPRprbcAgE9u00YAMk4vCL/W4iNNTKs6MKIOjqHRUHV1uNiXryst1Y4zUx2ujxhnvsQq4MBqqqmtU6qqYYZ0nh1qlkOIwUiLOtp3XYzSGqt8GsMpj6fripsNhWUDahIP4J5dnuJAT4h6IXD+Y0KathqbQnMkjw2vs6bcT66jX+wAtiVOFeoe8O3eiySYsqY9s8uzGi3Ovt1Cg51CCjZPXncTCWOFNJoxvahU/xi2lyzksOwHDXAOucwdV7uIp9ToHNld5rfhvtV8dLj5++MOWwnEfj/m8l9Civqi1+nNYX0K/3nGNrJsQCYAcQLA8/h1snVzMeoSW2HqjU0uM3jjvbO233kHmEZ64dV3x1jpXZ1IiXk6MgYJVNFS9n9wuIsNlI3Xj38l6IJPC5CZRm6lkjKnguMxN1E5e3fbiyIS/Xo0hXGgR4+KGr0EMwpbwPhVvnZZukEio+mkM8RXwKzgUnZPxLhcDuFicPXD9TbE9kc8Z0YDjK86kuou21h6S+xr4mZzJLTHi+iaUwilxvQKa3+FbYXmEmv1LYEsoxGP9qVbSNXmMtqm0pIPSZWmPf6vcKUzmbw/wSv0Nz5a24vcl4W6HOWkZyUIwFuyiNl6f7drmdNs1mWdPoUwkGL92YsjxyPRGwOufaviamiOn/DuR81pqzn9ypU2MkhOXk5bRWRL9BXsnV6l5dAPf7YQPTUxmU6zopmKI92khEyPxtk2RkwX1CUPsDxjGvbmULKfGKAnXHaDlz6HGtVH4e7nT9+VcFtYpr8LwyoN0RdPAfUA3cR17jTOkwvhMc4acSHdK4xYsp8aQQpSE63/B2NFuBNP8AXfovuZW4frKt2Trqv0cYelY1HFWvbpw00vv9DV9tuhybgwRnLdwP2LwfETiLDf+vbGsZpnEh8LJwezGUM0aBPmS5M80mTuGtQ1DIcuQGEMKykzpQeZWCyl9jO7hTu5MhF1/I5im4VPT558f9alXWaOUUzmaOCU/Jyt3DNPy6evjkBlDBAxsrl2mLP0pe1DnVlPUMPbKzSJZl/S1AAOhk/t9cvmy1Yq/YU9tuTamlHX9UJ+SH1Jj2Abhcrzf9FyLQQ5ggnPkZlG0rOZXkWnVNw5E0b2lgfdnI6cK9snlS2ZNTJj0DqOl+Zrg5rq3ekvrNn7IjSEFlMEy2OK/ioHzQYxCAzGu5gLXdrqunzdPqbgwG0qQ16+Rsupf0OpepFu6QKazSuuvBs7yTxsunzxyfaOwr4pMfNnmEfaOnrG8BYtR1JfpQua3+nzVDLB7GF9epua8XGw0bpP3FL3xlYE56vdM5/ML0zHAp+KGukLSsC92gmBp0H/qUbVhg8SHjXO1bx5MKSNT5l1qeK1/xiCf6cZHPv5lcGvWfietD1PLL+v1418wodU9zTbI4p52arvllUPAsDVGUgeye6oKrJu5ZV+KOvHqz5K4zhDTyJifCBJwC+W/xkb9FsBbAl7f5sQ3qDqTDbPYsDdGur46Phjp8Y9VZvwcjDAOI0zkhtRottl3acvccrp+MDK9rPnnvAbyGshrIK+BvAbyGshrIK+BvAbyGshrIK+BvAbyGshrIK+BvAbyGshrIK+BvAbyGshrIK+BvAbyGshrIK+BfmnAfgdeUVFxJge6fkTKYHpqXuo/snr16sQ3+tqxc+fOlYPLX5Qny7L+e82aNc9IHD7/AJ8ZRBtWrVpl/z6GwJOusrLyLOjvhUY+QScH1z4ifAHYs2vXru12TYt8Pgf+zmT6ZEi6D5Gp220i8l+QoOfHCPQTyLVK0syZM+ca0zS/J3HyqgX+uMRTXXl5eRCaB4DdiHzXExbC43fEXyH+JOV5NZVe4vCdTZq/JxpvbW29ZcOGDXzQPrOjPN8CW5FOQT6vU56v24fYyHAhBJV4Tl90859MT8yzKMmmRZjHRMkJmssS8G8nnrsEZLqCvOQmkP3pUuJSCe7yeDwruxB2PvwH0W4ykWZeiF+y7CRrjwFfii/D34xfjlz29TPityX5iLwofoxD2hnQ3YefCq5Q8MQvJZBfmgnPnj3b6fuE8hkLkW+61+udQ5jRzZw582yQj+K7lQeY/dEC+xAbSjqDjG1GxJ8i/oH9wL9YLPZcMp4hLCLNPeDuT8WLssIph81QwEXgpyRo3iXN35JPM+F8QhHUyY0WIDS/h+YnSQJq98FU3kk4YcenlKAfEY/Hy4H9HN/lCw3g5JTiUXyHw0gdJ2XIbwk060DOw38dX0iFuYWQq3DOLjW9EwX8ginwXcTXpDzvkbjTicJlNMnfpBD2JXrXrFmzvtsTIcJ2KAq6FhT6J7om7moYL/eULoE7gEwP9YGOs7O28Y5S+DH4z1Kj9xOej4KbCe3WhCwXQCbdj6ODdh/dRphuZSwEYgxpJV2M55iw78BXncrTzRhk+gZC2GwR6iOE6rh46JDXEWDS71/h8/m+AX3G+9rw2U2fvhf+l0N/CTVtJ89SwGfBSb+b0ZFmFjLpFIKHKMzilGeDypAq5wpwd+AryGe/0MFjNcGnJY47tz1w/o+xniO/jh6BctUi43ecqQcEXQj/hSkpP095XrTHjBRglygF6GasLgR8U4MaviQBk1+HtPvaNJqOxxMnTkzi4ekkAHqpvfdhlFcmT57cY9pkGglRTje5/X7/yCQNPA9Bs56wGJ/sWmSCYjtwqa00Cc4YwqOa8Uf6elcc/D3CuFuhgN2GLxOP0DcQ9uQUM5PnoXsDIlFmVU/E0s9TA+6EZrzQku6g0CPMJ0eNGlUu8QxuF3BbJgmp7f+WTtfW1paq4BZ4ylghTuQ6xPixxX7iH7jUVpQEd4RUsFuRk7PX+iJ8syCALe0gGHxkJSw6ylNfX/9TYelkjI6sEHqs08yjg4DvBiXiDydCKXhGR9NsoBXcTUEP4+sh3JYkptCpA1wS7BiimCvTEWljErqPvwjPdUJH+AzjUySZhmeOhfbJFaEDu3skPL+nFPC8lPKFkt5ptpcpPWmuFlyyG2pJIXw2Jc7hbn4Gmh+mTYUl4wigJE5/uhyG+4hOSOLSQ/AyRZ5CoaYQ7zLPh4/Uvs3paXg+iS/CfwLfBY9RR5GvjFe2g2+XlpFQvmNrg9Zp9hZP8kofMxJwmWx0cdB1jJHw/AZI8bYrKiqqIVKbeJQKkapjwYm3HTgZO89OtgwZ3BwdhO86IBrSYdDdjrebtODSp560hFfBL3NItxf45+nu3nHAyUDs5I7RLfGVhE5HSziYfILfqWQ8NQS+XZ4Ju7VgFLsDlL1ITE1D/Dj0P2hubv7LNLhU1M3gGtPh8gz8j6lwWRAC250KS8Yx5CGJ2zU7CRxsyCB3Hl1IMTX2zUy86PbG0+dfDP4kQvwv/eWxTLT9hbMingjvP2TiSWuSReZ5VIzXMvGWicTo0aNvwLht+Hd7W1Vn4pOH5zWQ10BeA3kN5DWQ10BeA3kN5DXw/1gD/wfb4vk+b42yPgAAAABJRU5ErkJggg==" alt="Ensemble" width="99" height="91">
+      <span class="brand-txt">Bande numérique</span>
+    </a>
+
+    <div class="scale">
+      <span class="scale-label">Départ</span>
+      <div class="seg" role="group" aria-label="Début de la bande">
+        <button type="button" id="oMinus" aria-label="Reculer le début de la bande">−</button>
+        <span class="origin-val" id="oValue">0</span>
+        <button type="button" id="oPlus" aria-label="Avancer le début de la bande">+</button>
+      </div>
+      <span class="scale-label">Longueur</span>
+      <div class="seg" id="seg" role="group" aria-label="Longueur de la bande"></div>
+    </div>
+  </div>
+
+  <div class="board">
+    <svg class="band" id="band" role="img" aria-label="Bande numérique"></svg>
+    <div class="notice" id="notice" hidden></div>
+  </div>
+
+  <div class="pad">
+    <div class="group">
+      <span class="group-cap">Reculer</span>
+      <button type="button" class="jump back" data-step="-100">−100</button>
+      <button type="button" class="jump back" data-step="-10">−10</button>
+      <button type="button" class="jump back" data-step="-1">−1</button>
+    </div>
+    <div class="group">
+      <span class="group-cap">Avancer</span>
+      <button type="button" class="jump" data-step="1">+1</button>
+      <button type="button" class="jump" data-step="10">+10</button>
+      <button type="button" class="jump" data-step="100">+100</button>
+    </div>
+    <div class="tools">
+      <button type="button" class="tool" id="undo">Annuler le saut</button>
+      <button type="button" class="tool" id="clear">Effacer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var SCALES = [10, 20, 50, 100, 1000];
+  var STEPS = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500];
+  var M = 46;              // marge horizontale
+  var H = 240;             // hauteur de dessin
+  var AXIS = 140;          // hauteur de l'axe
+
+  var scale = 20;          // longueur de la bande
+  var origin = 0;          // la bande ne commence pas forcément à zéro
+  var start = 0;
+  var pos = 0;
+  var jumps = [];
+  var lastW = 0;
+
+  var band = document.getElementById("band");
+  var seg = document.getElementById("seg");
+  var notice = document.getElementById("notice");
+  var undoBtn = document.getElementById("undo");
+  var oMinus = document.getElementById("oMinus");
+  var oPlus = document.getElementById("oPlus");
+  var oValue = document.getElementById("oValue");
+  var clearBtn = document.getElementById("clear");
+  var NS = "http://www.w3.org/2000/svg";
+
+  /* ---- préférences OpenBoard. L'API a changé entre les versions : on accepte
+     le retour direct de l'ancienne comme le rappel de la nouvelle, et on
+     fonctionne sans rien si le widget tourne dans un simple navigateur. ---- */
+  function prefGet(key, def, cb) {
+    var done = false;
+    function once(v) { if (!done) { done = true; cb(v === null || v === undefined || v === "" ? def : v); } }
+    try {
+      if (window.sankore && typeof window.sankore.preference === "function") {
+        var r = window.sankore.preference(key, def, once);
+        if (typeof r === "string" || typeof r === "number") { once(r); }
+        setTimeout(function () { once(def); }, 300);
+        return;
+      }
+    } catch (e) { /* pas d'OpenBoard : on continue sans mémoire */ }
+    once(def);
+  }
+  function prefSet(key, val) {
+    try {
+      if (window.sankore && typeof window.sankore.setPreference === "function") {
+        window.sankore.setPreference(key, String(val));
+      }
+    } catch (e) { /* sans effet hors OpenBoard */ }
+  }
+
+  function sv(tag, attrs, text) {
+    var n = document.createElementNS(NS, tag);
+    for (var k in attrs) { if (attrs.hasOwnProperty(k)) n.setAttribute(k, attrs[k]); }
+    if (text !== undefined && text !== null) n.textContent = text;
+    return n;
+  }
+
+  function width() {
+    var w = band.getBoundingClientRect().width;
+    return w > 240 ? w : 240;
+  }
+  function X(n, w) { return M + ((n - origin) / scale) * (w - 2 * M); }
+  function end() { return origin + scale; }
+  function inBand(v) { return v >= origin && v <= end(); }
+  // Le pas du réglage « départ » suit la taille de la bande.
+  function originStep() { return scale >= 1000 ? 100 : 10; }
+
+  // Le pas le plus fin qui garde au moins `minPx` entre deux graduations.
+  function pickStep(w, minPx) {
+    var usable = w - 2 * M;
+    for (var i = 0; i < STEPS.length; i++) {
+      if (usable * STEPS[i] / scale >= minPx) return STEPS[i];
+    }
+    return STEPS[STEPS.length - 1];
+  }
+
+  function flash(msg) {
+    notice.textContent = msg;
+    notice.hidden = false;
+    clearTimeout(flash.t);
+    flash.t = setTimeout(function () { notice.hidden = true; }, 2600);
+  }
+
+  function draw() {
+    var w = width();
+    lastW = w;
+    band.setAttribute("viewBox", "0 0 " + w + " " + H);
+    while (band.firstChild) band.removeChild(band.firstChild);
+
+    // Sur une bande de 10 ou 20, tous les nombres sont écrits : elle est faite
+    // pour être lue, pas pour être jolie.
+    var courte = scale <= 20;
+    var minor = courte ? 1 : pickStep(w, 11);
+    var major = courte ? 1 : pickStep(w, 52);
+    var serre = (w - 2 * M) / scale < 30;
+
+    band.appendChild(sv("line", { "class": "ax", x1: M - 16, y1: AXIS, x2: w - M + 24, y2: AXIS }));
+    band.appendChild(sv("path", {
+      "class": "ax", fill: "none",
+      d: "M" + (w - M + 14) + " " + (AXIS - 7) + " L" + (w - M + 26) + " " + AXIS + " L" + (w - M + 14) + " " + (AXIS + 7)
+    }));
+
+    var fin = end();
+    var n, n0 = Math.ceil(origin / minor) * minor;
+    for (n = n0; n <= fin + 0.0001; n += minor) {
+      var isMaj = (n % major === 0) || n === origin || n === fin;
+      band.appendChild(sv("line", {
+        "class": isMaj ? "tk-maj" : "tk",
+        x1: X(n, w), y1: AXIS - (isMaj ? 10 : 6), x2: X(n, w), y2: AXIS + (isMaj ? 10 : 6)
+      }));
+      if (isMaj && n !== start && n !== pos) {
+        band.appendChild(sv("text", {
+          "class": "lb", x: X(n, w), y: AXIS + 32, "font-size": serre ? 12 : 14
+        }, String(n)));
+      }
+    }
+
+    // Les sauts, dans l'ordre où ils ont été faits.
+    for (var i = 0; i < jumps.length; i++) {
+      var j = jumps[i];
+      var xa = X(j.from, w), xb = X(j.to, w);
+      var span = Math.abs(xb - xa);
+      var h = Math.min(74, Math.max(30, 24 + span * 0.32));
+      var mid = (xa + xb) / 2;
+      band.appendChild(sv("path", {
+        "class": "jp",
+        d: "M" + xa + " " + (AXIS - 12) + " Q" + mid + " " + (AXIS - 12 - 2 * h) + " " + xb + " " + (AXIS - 12)
+      }));
+      band.appendChild(sv("text", { "class": "jp-lb", x: mid, y: AXIS - 18 - h },
+        (j.to > j.from ? "+" : "−") + Math.abs(j.to - j.from)));
+    }
+
+    // Le départ, marqué sous l'axe, en bleu.
+    band.appendChild(sv("path", {
+      "class": "dep",
+      d: "M" + X(start, w) + " " + (AXIS + 4) + " l9 13 l-18 0 z"
+    }));
+    band.appendChild(sv("text", { "class": "lb lb-dep", x: X(start, w), y: AXIS + 34 }, String(start)));
+    band.appendChild(sv("text", { "class": "hint-txt", x: X(start, w), y: AXIS + 54 }, "départ"));
+
+    // L'arrivée, sous l'axe elle aussi, en rose : même traitement que le départ,
+    // pour qu'on lise les deux de la même façon depuis le fond de la classe.
+    if (pos !== start) {
+      var xp = X(pos, w);
+      var serres = Math.abs(xp - X(start, w)) < 70;   // les deux repères se touchent
+      var yNum = AXIS + (serres ? 76 : 34);
+      var yCap = AXIS + (serres ? 96 : 54);
+      band.appendChild(sv("path", { "class": "arr", d: "M" + xp + " " + (AXIS + 4) + " l9 13 l-18 0 z" }));
+      if (serres) {
+        band.appendChild(sv("line", { "class": "fil", x1: xp, y1: AXIS + 20, x2: xp, y2: yNum - 15 }));
+      }
+      band.appendChild(sv("text", { "class": "lb lb-arr", x: xp, y: yNum }, String(pos)));
+      band.appendChild(sv("text", { "class": "hint-txt", x: xp, y: yCap }, "arrivée"));
+    }
+    band.appendChild(sv("circle", { "class": "arr-ring", cx: X(pos, w), cy: AXIS, r: 12 }));
+    band.appendChild(sv("circle", { "class": "arr", cx: X(pos, w), cy: AXIS, r: 7 }));
+
+    if (!jumps.length) {
+      band.appendChild(sv("text", { "class": "hint-txt", x: w / 2, y: 26 },
+        "Touche la bande pour poser le départ, puis avance ou recule."));
+    }
+
+    var i2;
+    var btns = document.querySelectorAll(".jump");
+    for (i2 = 0; i2 < btns.length; i2++) {
+      var d = parseInt(btns[i2].getAttribute("data-step"), 10);
+      btns[i2].disabled = !inBand(pos + d);
+    }
+    undoBtn.disabled = !jumps.length;
+    clearBtn.disabled = !jumps.length && start === origin && pos === origin;
+    oValue.textContent = String(origin);
+    oMinus.disabled = origin <= 0;
+
+    var segBtns = seg.querySelectorAll("button");
+    for (i2 = 0; i2 < segBtns.length; i2++) {
+      segBtns[i2].setAttribute("aria-pressed", String(parseInt(segBtns[i2].getAttribute("data-scale"), 10) === scale));
+    }
+  }
+
+  function jump(d) {
+    var to = pos + d;
+    if (!inBand(to)) return;
+    jumps.push({ from: pos, to: to });
+    pos = to;
+    draw();
+  }
+
+  function setStart(n) {
+    start = n;
+    pos = n;
+    jumps = [];
+    prefSet("start", start);
+    draw();
+  }
+
+  // ---- l'échelle
+  for (var s = 0; s < SCALES.length; s++) {
+    (function (value) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = String(value);
+      b.setAttribute("data-scale", value);
+      b.addEventListener("click", function () {
+        // Changer la longueur ne touche à aucune valeur : on redessine.
+        if (jumps.length && (pos > origin + value || start > origin + value)) {
+          flash("Efface d'abord : le trajet sortirait de la bande.");
+          return;
+        }
+        scale = value;
+        if (!jumps.length && (start < origin || start > origin + scale)) {
+          start = origin; pos = origin; prefSet("start", start);
+        }
+        prefSet("scale", scale);
+        draw();
+      });
+      seg.appendChild(b);
+    })(SCALES[s]);
+  }
+
+  var jb = document.querySelectorAll(".jump");
+  for (var k = 0; k < jb.length; k++) {
+    (function (btn) {
+      btn.addEventListener("click", function () {
+        jump(parseInt(btn.getAttribute("data-step"), 10));
+      });
+    })(jb[k]);
+  }
+
+  undoBtn.addEventListener("click", function () {
+    var last = jumps.pop();
+    if (last) { pos = last.from; draw(); }
+  });
+  clearBtn.addEventListener("click", function () { setStart(origin); });
+
+  // Déplacer le début de la bande. Tant qu'aucun saut n'a été fait, le curseur
+  // suit ; dès qu'il y a un trajet, on refuse plutôt que de l'effacer en douce.
+  function shiftOrigin(dir) {
+    var next = origin + dir * originStep();
+    if (next < 0) next = 0;
+    if (next === origin) return;
+    if (jumps.length && (pos < next || pos > next + scale || start < next || start > next + scale)) {
+      flash("Efface d'abord : le trajet sortirait de la bande.");
+      return;
+    }
+    origin = next;
+    if (!jumps.length && (start < origin || start > origin + scale)) {
+      start = origin; pos = origin; prefSet("start", start);
+    }
+    prefSet("origin", origin);
+    draw();
+  }
+  oMinus.addEventListener("click", function () { shiftOrigin(-1); });
+  oPlus.addEventListener("click", function () { shiftOrigin(1); });
+
+  // Le logo ouvre Ensemble, mais JAMAIS dans le widget : une navigation en place
+  // ferait disparaître la bande en pleine leçon. Si la fenêtre ne s'ouvre pas,
+  // il ne se passe rien, et c'est très bien ainsi.
+  var brand = document.getElementById("brand");
+  brand.addEventListener("click", function (e) {
+    e.preventDefault();
+    try { window.open(brand.href, "_blank"); } catch (err) { /* sans effet */ }
+  });
+
+  // ---- poser le départ : un doigt sur la bande suffit
+  function placeFrom(clientX) {
+    var r = band.getBoundingClientRect();
+    var usable = r.width - 2 * M;
+    var v = origin + Math.round(((clientX - r.left - M) / usable) * scale);
+    if (v < origin) v = origin;
+    if (v > end()) v = end();
+    setStart(v);
+  }
+  // Le moteur embarqué dans OpenBoard peut être ancien : on se replie sur la
+  // souris et le tactile si les événements de pointeur n'existent pas.
+  if (window.PointerEvent) {
+    band.addEventListener("pointerdown", function (e) { placeFrom(e.clientX); });
+  } else {
+    band.addEventListener("mousedown", function (e) { placeFrom(e.clientX); });
+    band.addEventListener("touchstart", function (e) {
+      if (e.touches && e.touches.length) {
+        e.preventDefault();
+        placeFrom(e.touches[0].clientX);
+      }
+    });
+  }
+
+  // OpenBoard n'émet pas forcément d'événement quand l'enseignante
+  // redimensionne le widget : on surveille la largeur.
+  setInterval(function () {
+    if (Math.abs(width() - lastW) > 2) draw();
+  }, 400);
+  window.addEventListener("resize", draw);
+
+  // ---- démarrage, avec les réglages mémorisés s'il y en a
+  prefGet("scale", "20", function (v) {
+    var n = parseInt(v, 10);
+    if (SCALES.indexOf(n) >= 0) scale = n;
+    prefGet("origin", "0", function (v3) {
+      var og = parseInt(v3, 10);
+      if (!isNaN(og) && og >= 0) origin = og;
+      prefGet("start", String(origin), function (v2) {
+        var st = parseInt(v2, 10);
+        if (!isNaN(st) && st >= origin && st <= origin + scale) { start = st; pos = st; }
+        else { start = origin; pos = origin; }
+        draw();
+      });
+    });
+  });
+  draw();
+})();
+</script>
+</body>
+</html>

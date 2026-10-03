@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<widget xmlns="http://www.w3.org/ns/widgets"
+        id="ch.vroadstudio.ensemble.bande-numerique"
+        version="0.1.0"
+        width="980"
+        height="470">
+  <name>Bande numérique</name>
+  <description>Extension Ensemble. Avancer et reculer par unité, dizaine ou centaine sur une bande graduée. Le point de départ se pose d'un clic, chaque saut reste dessiné.</description>
+  <author href="https://vroadstudio.ch">vroad studio — Ensemble</author>
+  <icon src="icon.png" width="192" height="192"/>
+  <content src="index.html"/>
+</widget>
